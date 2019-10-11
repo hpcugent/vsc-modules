@@ -28,10 +28,10 @@ Interaction with Lmod lua cache and JSON conversion
 
 import os
 import json
-from vsc.utils.run import RunNoShellAsyncLoop
+from vsc.utils.run import run, RunNoShellAsyncLoop
 from distutils.version import LooseVersion
 from vsc.utils.fancylogger import setLogLevelDebug, setLogLevelInfo, getLogger
-from vsc.config.base import CLUSTER_DATA
+from vsc.config.base import CLUSTER_DATA, MODULEROOT
 
 LOGGER = getLogger()
 
@@ -48,6 +48,15 @@ MAIN_CLUSTERS_KEY = 'clusters'
 MAIN_SOFTWARE_KEY = 'software'
 
 
+def run_cache_create():
+    """Run the script to create the Lmod cache"""
+    lmod_dir = os.environ.get("LMOD_DIR", None)
+    if not lmod_dir:
+        LOGGER.raiseException("Cannot find $LMOD_DIR in the environment.", RuntimeError)
+
+    return run([os.path.join(lmod_dir, 'update_lmod_system_cache_files'), MODULEROOT])
+
+
 def get_lua_via_json(filename, tablenames):
     """Dump tables from lua data in filename to json as string. Return as list"""
     if not os.path.isfile(filename):
@@ -57,9 +66,9 @@ def get_lua_via_json(filename, tablenames):
     luacmd = "json=require('json');dofile('%s');print(json.encode({%s}))"
     # default asyncloop.run is slow: if the output is very big, code reads in 1k chunks
     #   so use larger readsize
-    run = RunNoShellAsyncLoop(['lua', '-'], input=(luacmd % (filename, tabledata)))
-    run.readsize = 1024**2
-    _, out = run._run()
+    arun = RunNoShellAsyncLoop(['lua', '-'], input=(luacmd % (filename, tabledata)))
+    arun.readsize = 1024**2
+    _, out = arun._run()
     data = json.loads(out)
 
     return [data[x] for x in tablenames]

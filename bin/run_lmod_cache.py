@@ -29,55 +29,13 @@ It also can check if the age of the current age and will report if it's too old.
 
 @author: Ward Poelmans (Ghent University)
 """
-import json
 import os
-import sys
 import time
-from vsc.utils import fancylogger
-from vsc.utils.nagios import NAGIOS_EXIT_CRITICAL, NAGIOS_EXIT_WARNING
-from vsc.utils.run import run_simple
 from vsc.utils.script_tools import ExtendedSimpleOption
 
-# log setup
-logger = fancylogger.getLogger(__name__)
-fancylogger.logToScreen(True)
-fancylogger.setLogLevelInfo()
+from vsc.modules.cache import run_cache_create, convert_lmod_cache_to_json, get_lmod_conf
 
 NAGIOS_CHECK_INTERVAL_THRESHOLD = 2 * 60 * 60  # 2 hours
-
-def run_cache_create(modules_root):
-    """Run the script to create the Lmod cache"""
-    lmod_dir = os.environ.get("LMOD_DIR", None)
-    if not lmod_dir:
-        raise RuntimeError("Cannot find $LMOD_DIR in the environment.")
-
-    cmd = "%s/update_lmod_system_cache_files %s" % (lmod_dir, modules_root)
-    return run_simple(cmd)
-
-
-def get_lmod_config():
-    """Get the modules root and cache path from the Lmod config"""
-    lmod_cmd = os.environ.get("LMOD_CMD", None)
-    if not lmod_cmd:
-        raise RuntimeError("Cannot find $LMOD_CMD in the environment.")
-
-    ec, out = run_simple("%s bash --config-json" % lmod_cmd)
-    if ec != 0:
-        raise RuntimeError("Failed to get Lmod configuration: %s", out)
-
-    try:
-        lmodconfig = json.loads(out)
-
-        config = {
-            'modules_root': lmodconfig['configT']['mpath_root'],
-            'cache_dir': lmodconfig['cache'][0][0],
-            'cache_timestamp': lmodconfig['cache'][0][1],
-        }
-        logger.debug("Found Lmod config: %s", config)
-    except (ValueError, KeyError, IndexError, TypeError) as err:
-        raise RuntimeError("Failed to parse the Lmod configuration: %s", err)
-
-    return config
 
 
 def main():
@@ -94,34 +52,34 @@ def main():
     opts = ExtendedSimpleOption(options)
 
     try:
-        config = get_lmod_config()
-
         if opts.options.create_cache:
             opts.log.info("Updating the Lmod cache")
-            exitcode, msg = run_cache_create(config['modules_root'])
+            exitcode, msg = run_cache_create()
             if exitcode != 0:
-                logger.error("Lmod cache update failed: %s", msg)
+                opts.log.error("Lmod cache update failed: %s", msg)
                 opts.critical("Lmod cache update failed")
-                sys.exit(NAGIOS_EXIT_CRITICAL)
+
+            try:
+                convert_lmod_cache_to_json()
+            except Exception as err:
+                opts.log.exception("Lmod to JSON failed: %s", err)
+                opts.critical("Lmod to JSON failed.")
 
         opts.log.info("Checking the Lmod cache freshness")
-        timestamp = os.stat(config['cache_timestamp'])
+        timestamp = os.stat(get_lmod_conf()['timestamp'])
 
         # give a warning when the cache is older then --freshness-threshold
         if (time.time() - timestamp.st_mtime) > opts.options.freshness_threshold * 60:
             errmsg = "Lmod cache is not fresh"
-            logger.warn(errmsg)
+            opts.log.warn(errmsg)
             opts.warning(errmsg)
-            sys.exit(NAGIOS_EXIT_WARNING)
 
     except RuntimeError as err:
-        logger.exception("Failed to update Lmod cache: %s", err)
+        opts.log.exception("Failed to update Lmod cache: %s", err)
         opts.critical("Failed to update Lmod cache. See logs.")
-        sys.exit(NAGIOS_EXIT_CRITICAL)
     except Exception as err:  # pylint: disable=W0703
-        logger.exception("critical exception caught: %s", err)
+        opts.log.exception("critical exception caught: %s", err)
         opts.critical("Script failed because of uncaught exception. See logs.")
-        sys.exit(NAGIOS_EXIT_CRITICAL)
 
     if opts.options.create_cache:
         opts.epilogue("Lmod cache updated.")
