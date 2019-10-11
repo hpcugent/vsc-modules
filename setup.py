@@ -14,6 +14,7 @@ PACKAGE = {
     'setup_requires': [
         'vsc-install >= 0.11.5',
         'vsc-base',
+        'vsc-config',
     ],
     'tests_require': [
         'mock',

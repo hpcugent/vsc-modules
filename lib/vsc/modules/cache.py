@@ -30,7 +30,7 @@ import os
 import json
 from vsc.utils.run import RunNoShellAsyncLoop
 from distutils.version import LooseVersion
-from vsc.utils.fancylogger import setLogLevelDebug, getLogger
+from vsc.utils.fancylogger import setLogLevelDebug, setLogLevelInfo, getLogger
 from vsc.config.base import CLUSTER_DATA
 
 LOGGER = getLogger()
@@ -76,7 +76,7 @@ def get_lmod_cache(cachefile):
     return get_lua_via_json(cachefile, ['mpathMapT', 'spiderT'])
 
 
-def cluster_maps(mpathMapT):
+def cluster_map(mpathMapT):
     """Return cluster -> cluster module and modulepath -> [cluster1, ...] mappings"""
     # map cluster to cluster module
     clustermap = {}
@@ -128,10 +128,9 @@ def sort_modulepaths(spiderT, mpmap):
             LOGGER.debug("Moving EXTRA_MODULEPATH %s to the end", extra)
             try:
                 modulepaths.remove(extra)
+                modulepaths.append(extra)
             except ValueError as e:
                 LOGGER.error("Did not find EXTRA_MODULEPATH %s in modulespaths %s: %s", extra, modulepaths, e)
-
-            modulepaths.append(extra)
 
     LOGGER.debug("Sorted modulepaths %s", modulepaths)
     return modulepaths
@@ -277,14 +276,12 @@ def convert_lmod_cache_to_json():
     """Main conversion of Lmod lua cache to cluster and software mapping in JSON"""
     # you really don't want this in debug
     cachefile = os.path.join(get_lmod_conf()['dir'], CACHEFILENAME)
-    mpathMapT, spiderT = get_lmod_cache(cachefile)
 
+    # You do not want this in debug
+    setLogLevelInfo()
+    mpathMapT, spiderT = get_lmod_cache(cachefile)
     setLogLevelDebug()
-    clustermap, mpmap = cluster_maps(mpathMapT)
+
+    clustermap, mpmap = cluster_map(mpathMapT)
     softmap = software_map(spiderT, mpmap)
     write_json(clustermap, softmap)
-
-if __name__ == '__main__':
-    convert_lmod_cache_to_json()
-    import pprint
-    pprint.pprint(software_cluster_view())

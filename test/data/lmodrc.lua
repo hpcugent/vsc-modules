@@ -3,7 +3,7 @@ propT = {
 
 scDescriptT = {
     {
-        ["dir"] = "/apps/gent/lmodcache",
+        ["dir"] = "./test/data",
         ["timestamp"] = "/apps/gent/lmodcache/timestamp",
     },
 

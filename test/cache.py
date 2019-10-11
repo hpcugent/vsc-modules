@@ -23,6 +23,16 @@
 # along with vsc-modules.  If not, see <http://www.gnu.org/licenses/>.
 #
 '''
+
+From existing spiderT.lua:
+
+head -2000 spiderT.lua > test/data/spiderT.lua
+echo 'herehere' >> test/data/spiderT.lua
+tail -1000 spiderT.lua >> test/data/spiderT.lua
+
+and then some manual cleanup ;)
+    - insert 2nd mpath
+    - insert non-trivial default value
 '''
 import os
 import shutil
@@ -30,8 +40,11 @@ import tempfile
 from vsc.install.testing import TestCase
 from vsc.modules import cache
 from vsc.modules.cache import (
-    get_lmod_conf,
+    CACHEFILENAME,
+    cluster_map, software_map,
+    get_lmod_conf, get_lmod_cache,
     get_json_filename, write_json, read_json,
+    software_cluster_view,
     )
 
 import logging
@@ -39,6 +52,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 import json
+
+
 
 class CacheTest(TestCase):
     def setUp(self):
@@ -49,7 +64,7 @@ class CacheTest(TestCase):
         self.tmpdir = tempfile.mkdtemp()
         self.topdir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         # monkeypatch
-        cache.LMOD_CONFIG = os.path.join(self.topdir, 'test/data/lmodrc.lua')
+        cache.LMOD_CONFIG = './test/data/lmodrc.lua'
 
     def tearDown(self):
         """Clean up after running test"""
@@ -59,11 +74,11 @@ class CacheTest(TestCase):
 
     def test_lmod_conf(self):
         self.assertEqual(get_lmod_conf(),
-                         {'timestamp': '/apps/gent/lmodcache/timestamp', 'dir': '/apps/gent/lmodcache'})
+                         {'timestamp': '/apps/gent/lmodcache/timestamp', 'dir': './test/data'})
 
     def test_read_write_json(self):
         """Test reading and writing the json data"""
-        self.assertEqual(get_json_filename(), '/apps/gent/lmodcache/modulemap.json')
+        self.assertEqual(get_json_filename(), './test/data/modulemap.json')
 
         jsonfilename = os.path.join(self.tmpdir, 'some.json')
         clustermap = {'a': 'b'}
@@ -71,3 +86,53 @@ class CacheTest(TestCase):
         write_json(clustermap, softmap, filename=jsonfilename)
         self.assertEqual(json.loads(open(jsonfilename).read()), {'clusters': clustermap, 'software': softmap})
         self.assertEqual(read_json(filename=jsonfilename), (clustermap, softmap))
+
+    def test_make_json(self):
+        """More or less the code from convert_lmod_cache_to_json"""
+        cachefile = os.path.join(get_lmod_conf()['dir'], CACHEFILENAME)
+        self.assertEqual(cachefile, './test/data/spiderT.lua')
+
+        mpathMapT, spiderT = get_lmod_cache(cachefile)
+
+        mpath = '/apps/gent/CO7/cascadelake-volta-ib-PILOT/modules/all'
+        name = 'Autoconf'
+        module = 'Autoconf/2.69-GCCcore-8.2.0'
+        version = '2.69-GCCcore-8.2.0'
+
+        # only test one value
+        self.assertEqual(mpathMapT[mpath], {'cluster/.joltik': '/etc/modulefiles/vsc'})
+        # only test one value
+        self.assertEqual(spiderT[mpath][name]['fileT'][module]['Version'], version)
+
+        clustermap, mpmap = cluster_map(mpathMapT)
+        # test 2 values, one hidden cluster
+        self.assertEqual(clustermap['banette'], 'cluster/.banette')
+        self.assertEqual(clustermap['delcatty'], 'cluster/delcatty')
+
+        # test one, multivalue
+        self.assertEqual(mpmap['/apps/gent/CO7/haswell-ib/modules/all'], ['golett', 'swalot', 'phanpy'])
+
+        # only two mpaths in the mocked spiderT
+        mpath2 = '/apps/gent/CO7/skylake-ib/modules/all'
+        newmpmap = {mpath: mpmap[mpath], mpath2: mpmap[mpath2]}
+        softmap = software_map(spiderT, newmpmap)
+        self.assertEqual(softmap['Autotools'],
+                         {'.default': {'joltik': '20180311-GCCcore-8.3.0'},
+                          '20180311-GCCcore-8.2.0': ['joltik'],
+                          '20180311-GCCcore-8.3.0': ['joltik']})
+        self.assertEqual(softmap['Bazel'],
+                         {'.default': {'skitty': '0.20.0-GCCcore-8.2.0',
+                                       'victini': '0.20.0-GCCcore-8.2.0'},
+                          '0.20.0-GCCcore-8.2.0': ['skitty', 'victini'],
+                          '0.24.1-GCCcore-8.2.0': ['skitty', 'victini'],
+                          '0.25.2-GCCcore-8.2.0': ['skitty', 'victini'],
+                          '0.26.1-GCCcore-8.2.0': ['skitty', 'victini']})
+
+
+        clview = software_cluster_view(softmap=softmap)
+        # regular ordered
+        self.assertEqual(clview['joltik']['Autoconf'], ['2.69-GCCcore-8.3.0', u'2.69-GCCcore-8.2.0'])
+        # non-trivial (first) default, rest ordered
+        self.assertEqual(clview['skitty']['Bazel'],
+                         ['0.20.0-GCCcore-8.2.0', '0.26.1-GCCcore-8.2.0',
+                          '0.25.2-GCCcore-8.2.0', '0.24.1-GCCcore-8.2.0'])
