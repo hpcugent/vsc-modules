@@ -286,10 +286,7 @@ def convert_lmod_cache_to_json():
     # you really don't want this in debug
     cachefile = os.path.join(get_lmod_conf()['dir'], CACHEFILENAME)
 
-    # You do not want this in debug
-    setLogLevelInfo()
     mpathMapT, spiderT = get_lmod_cache(cachefile)
-    setLogLevelDebug()
 
     clustermap, mpmap = cluster_map(mpathMapT)
     softmap = software_map(spiderT, mpmap)
