@@ -28,9 +28,10 @@ Interaction with Lmod lua cache and JSON conversion
 
 import os
 import json
+from atomicwrites import atomic_write
 from vsc.utils.run import run, RunNoShellAsyncLoop
 from distutils.version import LooseVersion
-from vsc.utils.fancylogger import setLogLevelDebug, setLogLevelInfo, getLogger
+from vsc.utils.fancylogger import getLogger
 from vsc.config.base import CLUSTER_DATA, MODULEROOT
 
 LOGGER = getLogger()
@@ -63,12 +64,16 @@ def get_lua_via_json(filename, tablenames):
         LOGGER.raiseException("No valid file %s found" % filename)
 
     tabledata = ','.join(["['%s']=%s" % (x, x) for x in tablenames])
-    luacmd = "json=require('json');dofile('%s');print(json.encode({%s}))"
+    luatemplate = "json=require('json');dofile('%s');print(json.encode({%s}))"
+    luacmd = luatemplate % (filename, tabledata)
     # default asyncloop.run is slow: if the output is very big, code reads in 1k chunks
     #   so use larger readsize
-    arun = RunNoShellAsyncLoop(['lua', '-'], input=(luacmd % (filename, tabledata)))
+    arun = RunNoShellAsyncLoop(['lua', '-'], input=luacmd)
     arun.readsize = 1024**2
-    _, out = arun._run()
+    ec, out = arun._run()
+    if ec:
+        LOGGER.raiseException("Lua export to json using \"%s\" failed: %s" % (luacmd, out))
+
     data = json.loads(out)
 
     return [data[x] for x in tablenames]
@@ -92,9 +97,8 @@ def cluster_map(mpathMapT):
     # map modulepath to list of clusters
     modulepathmap = {}
     for mpath, data in mpathMapT.items():
-        for clmod in data.keys():
-            if not clmod.startswith('cluster/'):
-                continue
+        for clmod in [x for x in data.keys() if x.startswith('cluster/')]:
+            # also handle hidden cluster modules (starting with . to indicate thye are hidden)
             cluster = clmod.split('/')[1].lstrip('.')
             tmpclmod = clustermap.setdefault(cluster, clmod)
             if tmpclmod != clmod:
@@ -138,8 +142,8 @@ def sort_modulepaths(spiderT, mpmap):
             try:
                 modulepaths.remove(extra)
                 modulepaths.append(extra)
-            except ValueError as e:
-                LOGGER.error("Did not find EXTRA_MODULEPATH %s in modulespaths %s: %s", extra, modulepaths, e)
+            except ValueError as err:
+                LOGGER.error("Did not find EXTRA_MODULEPATH %s in modulespaths %s: %s", extra, modulepaths, err)
 
     LOGGER.debug("Sorted modulepaths %s", modulepaths)
     return modulepaths
@@ -147,8 +151,7 @@ def sort_modulepaths(spiderT, mpmap):
 
 def sort_recent_versions(versions):
     """Sort versions using LooseVersion, most recent first"""
-    looseversions = map(LooseVersion, versions)
-    return [x.vstring for x in sorted(looseversions)][::-1]
+    return sorted(versions, key=LooseVersion, reverse=True)
 
 
 def software_map(spiderT, mpmap):
@@ -168,35 +171,31 @@ def software_map(spiderT, mpmap):
                 # sanity check
                 txt = "for modulepath %s name %s fullname %s: %s" % (mpath, name, fullname, fulldata)
                 if version != fulldata['canonical']:
-                    LOGGER.raiseException("Version!=canocincal "+txt)
+                    LOGGER.raiseException("Version != canonical " + txt)
                 if fullname != "%s/%s" % (name, version):
-                    LOGGER.raiseException("fullname!=name/version "+txt)
+                    LOGGER.raiseException("fullname != name/version " + txt)
 
                 mpversions.append(version)
                 softversion = soft.setdefault(version, [])
                 softversion.extend(clusters)
 
             # determine default
-            #   the default is per clusters (or per modulepath)
+            #   the default is per clusters (actually per modulepath)
             default = None
             defaultdata = namedata['defaultT']
 
             if defaultdata:
                 value = defaultdata['value']
                 if value:
-                    default = value
-
-                    # default typically has full name
-                    pref = name + '/'
-                    if default.startswith(pref):
-                        default = default[len(pref):]
+                    # default has full name, we only need the versionxs
+                    default = value[len(name)+1:]
 
                     if default not in soft:
                         LOGGER.raiseException("Default value %s found for %s modulepath %s but not matching entry: %s" %
                                               (default, name, mpath, defaultdata))
                 else:
                     # see https://easybuild.readthedocs.io/en/latest/Wrapping_dependencies.html
-                    LOGGER.debug("Default without vaule found for %s modulepath %s: %s" %
+                    LOGGER.debug("Default without value found for %s modulepath %s: %s" %
                                  (name, mpath, defaultdata))
 
             if not default:
@@ -225,8 +224,7 @@ def write_json(clustermap, softmap, filename=None):
     if filename is None:
         filename = get_json_filename()
 
-    # TODO: make atomic
-    with open(filename, 'w') as outfile:
+    with atomic_write(filename, overwrite=True) as outfile:
         json.dump({
             MAIN_CLUSTERS_KEY: clustermap,
             MAIN_SOFTWARE_KEY: softmap,
@@ -283,7 +281,6 @@ def software_cluster_view(softmap=None):
 
 def convert_lmod_cache_to_json():
     """Main conversion of Lmod lua cache to cluster and software mapping in JSON"""
-    # you really don't want this in debug
     cachefile = os.path.join(get_lmod_conf()['dir'], CACHEFILENAME)
 
     mpathMapT, spiderT = get_lmod_cache(cachefile)

@@ -15,6 +15,8 @@ PACKAGE = {
         'vsc-install >= 0.11.5',
         'vsc-base',
         'vsc-config',
+        'vsc-utils',
+        'atomicwrites',
     ],
     'tests_require': [
         'mock',
