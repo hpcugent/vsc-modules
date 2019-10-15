@@ -187,8 +187,11 @@ def software_map(spiderT, mpmap):
             if defaultdata:
                 value = defaultdata['value']
                 if value:
-                    # default has full name, we only need the versions
-                    default = value[len(name)+1:]
+                    if value.startswith(name + "/"):
+                        # default has full name, we only need the versions
+                        default = value[len(name)+1:]
+                    else:
+                        default = value
 
                     if default not in soft:
                         LOGGER.raiseException("Default value %s found for %s modulepath %s but not matching entry: %s" %
