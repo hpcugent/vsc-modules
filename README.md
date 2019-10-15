@@ -1,2 +1,3 @@
-# vsc-modules
-Python reposiotry with modules related tools
+Description
+============
+Python repository with (Lmod) modules related tools
