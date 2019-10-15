@@ -9,3 +9,4 @@ spiderT.lua
 * some manual cleanup
  * insert 2nd mpath
  * insert non-trivial default value for Bazel
+ * insert default value with only the version for zsh

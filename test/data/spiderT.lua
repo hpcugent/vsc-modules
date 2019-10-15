@@ -372,7 +372,9 @@ spiderT = {
       },
     },
     zsh = {
-      defaultT = {},
+      defaultT = {
+        ["value"] = "5.0.2-intel-2015a"
+      },
       dirT = {},
       fileT = {
         ["zsh/5.0.2-intel-2015a"]  = {
