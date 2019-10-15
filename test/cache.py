@@ -23,16 +23,7 @@
 # along with vsc-modules.  If not, see <http://www.gnu.org/licenses/>.
 #
 '''
-
-From existing spiderT.lua:
-
-head -2000 spiderT.lua > test/data/spiderT.lua
-echo 'herehere' >> test/data/spiderT.lua
-tail -1000 spiderT.lua >> test/data/spiderT.lua
-
-and then some manual cleanup ;)
-    - insert 2nd mpath
-    - insert non-trivial default value
+cache tests
 '''
 import os
 import shutil
@@ -73,8 +64,10 @@ class CacheTest(TestCase):
         super(CacheTest, self).tearDown()
 
     def test_lmod_conf(self):
-        self.assertEqual(get_lmod_conf(),
-                         {'timestamp': '/apps/gent/lmodcache/timestamp', 'dir': './test/data'})
+        self.assertEqual(get_lmod_conf(), {
+            'timestamp': '/apps/gent/lmodcache/timestamp',
+            'dir': './test/data',
+        })
 
     def test_read_write_json(self):
         """Test reading and writing the json data"""
@@ -133,6 +126,7 @@ class CacheTest(TestCase):
         # regular ordered
         self.assertEqual(clview['joltik']['Autoconf'], ['2.69-GCCcore-8.3.0', u'2.69-GCCcore-8.2.0'])
         # non-trivial (first) default, rest ordered
+        #   this default was manually set in the spiderT.lua test data
         self.assertEqual(clview['skitty']['Bazel'],
                          ['0.20.0-GCCcore-8.2.0', '0.26.1-GCCcore-8.2.0',
                           '0.25.2-GCCcore-8.2.0', '0.24.1-GCCcore-8.2.0'])

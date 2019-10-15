@@ -187,7 +187,7 @@ def software_map(spiderT, mpmap):
             if defaultdata:
                 value = defaultdata['value']
                 if value:
-                    # default has full name, we only need the versionxs
+                    # default has full name, we only need the versions
                     default = value[len(name)+1:]
 
                     if default not in soft:
@@ -270,9 +270,9 @@ def software_cluster_view(softmap=None):
             clview[cluster][name] = versions
             try:
                 versions.remove(default)
-            except ValueError as e:
+            except ValueError as err:
                 LOGGER.raiseException("Unable to remove default %s from versions for %s cluster %s: %s" %
-                                      (default, versions, name, cluster, e))
+                                      (default, versions, name, cluster, err))
 
             versions.insert(0, default)  # default first
 
