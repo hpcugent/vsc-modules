@@ -234,6 +234,8 @@ def write_json(clustermap, softmap, filename=None):
         }, outfile)
         LOGGER.debug("Wrote %s", filename)
 
+    os.chmod(filename, 0o644)
+
 
 def read_json(filename=None):
     """Read JSON and return cluster and software map"""

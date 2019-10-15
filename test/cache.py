@@ -79,6 +79,7 @@ class CacheTest(TestCase):
         write_json(clustermap, softmap, filename=jsonfilename)
         self.assertEqual(json.loads(open(jsonfilename).read()), {'clusters': clustermap, 'software': softmap})
         self.assertEqual(read_json(filename=jsonfilename), (clustermap, softmap))
+        self.assertEqual(os.stat(jsonfilename).st_mode & 0o777, 0o644)
 
     def test_make_json(self):
         """More or less the code from convert_lmod_cache_to_json"""
