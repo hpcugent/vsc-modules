@@ -8,7 +8,7 @@ import vsc.install.shared_setup as shared_setup
 from vsc.install.shared_setup import sdw
 
 PACKAGE = {
-    'version': '0.0.3',
+    'version': '0.0.4',
     'author': [sdw],
     'maintainer': [sdw],
     'setup_requires': [
