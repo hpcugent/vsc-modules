@@ -94,7 +94,7 @@ class CacheTest(TestCase):
         self.assertEqual(clustermap['delcatty'], 'cluster/delcatty')
 
         # test one, multivalue
-        self.assertEqual(mpmap['/apps/gent/CO7/haswell-ib/modules/all'], ['golett', 'swalot', 'phanpy'])
+        self.assertEqual(mpmap['/apps/gent/CO7/haswell-ib/modules/all'], ['golett', 'phanpy', 'swalot'])
 
         # only two mpaths in the mocked spiderT
         mpath2 = '/apps/gent/CO7/skylake-ib/modules/all'
