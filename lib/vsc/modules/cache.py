@@ -177,7 +177,7 @@ def software_map(spiderT, mpmap):
 
                 mpversions.append(version)
                 softversion = soft.setdefault(version, [])
-                softversion.extend(clusters)
+                soft[version] = sorted(softversion + clusters)
 
             # determine default
             #   the default is per clusters (actually per modulepath)
