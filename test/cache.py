@@ -25,6 +25,7 @@
 '''
 cache tests
 '''
+import json
 import os
 import shutil
 import tempfile
@@ -42,26 +43,15 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
-import json
-
-
-
 class CacheTest(TestCase):
     def setUp(self):
-        """Perpare to run test"""
+        """Prepare to run test"""
 
         super(CacheTest, self).setUp()
 
-        self.tmpdir = tempfile.mkdtemp()
         self.topdir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         # monkeypatch
         cache.LMOD_CONFIG = './test/data/lmodrc.lua'
-
-    def tearDown(self):
-        """Clean up after running test"""
-        shutil.rmtree(self.tmpdir)
-
-        super(CacheTest, self).tearDown()
 
     def test_lmod_conf(self):
         self.assertEqual(get_lmod_conf(), {
@@ -104,7 +94,7 @@ class CacheTest(TestCase):
         self.assertEqual(clustermap['delcatty'], 'cluster/delcatty')
 
         # test one, multivalue
-        self.assertEqual(mpmap['/apps/gent/CO7/haswell-ib/modules/all'], ['golett', 'swalot', 'phanpy'])
+        self.assertEqual(mpmap['/apps/gent/CO7/haswell-ib/modules/all'], ['golett', 'phanpy', 'swalot'])
 
         # only two mpaths in the mocked spiderT
         mpath2 = '/apps/gent/CO7/skylake-ib/modules/all'

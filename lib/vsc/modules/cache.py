@@ -107,6 +107,7 @@ def cluster_map(mpathMapT):
             mpclusters = modulepathmap.setdefault(mpath, [])
             if cluster not in mpclusters:
                 mpclusters.append(cluster)
+            modulepathmap[mpath] = sorted(mpclusters)
 
     LOGGER.debug("Generated clustermap %s", clustermap)
     LOGGER.debug("Generated modulepathmap %s", modulepathmap)
@@ -177,7 +178,7 @@ def software_map(spiderT, mpmap):
 
                 mpversions.append(version)
                 softversion = soft.setdefault(version, [])
-                softversion.extend(clusters)
+                soft[version] = sorted(softversion + clusters)
 
             # determine default
             #   the default is per clusters (actually per modulepath)
