@@ -197,8 +197,7 @@ def software_map(spiderT, mpmap):
                                               (default, name, mpath, defaultdata))
                 else:
                     # see https://easybuild.readthedocs.io/en/latest/Wrapping_dependencies.html
-                    LOGGER.debug("Default without value found for %s modulepath %s: %s" %
-                                 (name, mpath, defaultdata))
+                    LOGGER.debug("Default without value found for %s modulepath %s: %s", name, mpath, defaultdata)
 
             if not default:
                 default = sort_recent_versions(mpversions)[0]
