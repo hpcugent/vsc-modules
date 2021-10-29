@@ -1,5 +1,5 @@
 #
-# Copyright 2019-2020 Ghent University
+# Copyright 2019-2021 Ghent University
 #
 # This file is part of vsc-modules,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -138,13 +138,11 @@ def sort_modulepaths(spiderT, mpmap):
     #      so they are reversed: the first extra has to be moved as far as possible
     for extras in [x.get('EXTRA_MODULEPATHS', [])[::-1] for x in CLUSTER_DATA.values()]:
         for extra in extras:
-            # move to the end
-            LOGGER.debug("Moving EXTRA_MODULEPATH %s to the end", extra)
-            try:
+            # move to the end (if present)
+            if extra in modulepaths:
+                LOGGER.debug("Moving EXTRA_MODULEPATH %s to the end", extra)
                 modulepaths.remove(extra)
                 modulepaths.append(extra)
-            except ValueError as err:
-                LOGGER.error("Did not find EXTRA_MODULEPATH %s in modulespaths %s: %s", extra, modulepaths, err)
 
     LOGGER.debug("Sorted modulepaths %s", modulepaths)
     return modulepaths
@@ -199,8 +197,7 @@ def software_map(spiderT, mpmap):
                                               (default, name, mpath, defaultdata))
                 else:
                     # see https://easybuild.readthedocs.io/en/latest/Wrapping_dependencies.html
-                    LOGGER.debug("Default without value found for %s modulepath %s: %s" %
-                                 (name, mpath, defaultdata))
+                    LOGGER.debug("Default without value found for %s modulepath %s: %s", name, mpath, defaultdata)
 
             if not default:
                 default = sort_recent_versions(mpversions)[0]
