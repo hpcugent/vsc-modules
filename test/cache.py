@@ -36,7 +36,7 @@ from vsc.modules.cache import (
     cluster_map, software_map,
     get_lmod_conf, get_lmod_cache,
     get_json_filename, write_json, read_json,
-    software_cluster_view,
+    software_cluster_view, sort_recent_versions,
     )
 
 import logging
@@ -59,6 +59,16 @@ class CacheTest(TestCase):
             'dir': './test/data',
         })
 
+    def test_versions(self):
+        data = [
+            [
+                ['v2106-foss-2021a-highopt', '8-foss-2020b-20210316', '8-intel-2020b', '8-foss-2020b', 'v2106-foss-2021a', '9-foss-2021a'],
+                ['v2106-foss-2021a-highopt', 'v2106-foss-2021a', '9-foss-2021a', '8-intel-2020b', '8-foss-2020b-20210316', '8-foss-2020b'],
+            ],
+        ]
+        for unsorted_v, sorted_v in data:
+            self.assertEqual(sort_recent_versions(unsorted_v), sorted_v)
+
     def test_read_write_json(self):
         """Test reading and writing the json data"""
         self.assertEqual(get_json_filename(), './test/data/modulemap.json')
@@ -70,6 +80,43 @@ class CacheTest(TestCase):
         self.assertEqual(json.loads(open(jsonfilename).read()), {'clusters': clustermap, 'software': softmap})
         self.assertEqual(read_json(filename=jsonfilename), (clustermap, softmap))
         self.assertEqual(os.stat(jsonfilename).st_mode & 0o777, 0o644)
+
+    def test_cluster_map(self):
+        """Test cluster map"""
+        mpathMapT = {
+            '/abc' : {
+                'mod1' : {
+                    'data': 'mod1',
+                },
+                'cluster/cluster1' : {
+                    'data': 'cluster1',
+                },
+                'cluster/cluster2/.part1' : {
+                    'data': 'cluster2 hidden part1',
+                },
+                'cluster/cluster2/part2' : {
+                    'data': 'cluster2 part2',
+                },
+            },
+            '/def' : {
+                'cluster/.cluster3' : {
+                    'data': 'hidden cluster3',
+                },
+            }
+        }
+
+        clustermap, modulepathmap = cluster_map(mpathMapT)
+
+        self.assertEqual(clustermap, {
+            'cluster1': 'cluster/cluster1',
+            'cluster2/part1': 'cluster/cluster2/.part1',
+            'cluster2/part2': 'cluster/cluster2/part2',
+            'cluster3': 'cluster/.cluster3',
+        })
+        self.assertEqual(modulepathmap, {
+            '/abc': ['cluster1', 'cluster2/part1', 'cluster2/part2'],
+            '/def': ['cluster3'],
+        })
 
     def test_make_json(self):
         """More or less the code from convert_lmod_cache_to_json"""
