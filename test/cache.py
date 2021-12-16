@@ -62,12 +62,12 @@ class CacheTest(TestCase):
     def test_versions(self):
         data = [
             [
-                ['v2106-foss-2021a-highopt', '8-foss-2020b-20210316', '8-intel-2020b', '8-foss-2020b', 'v2106-foss-2021a', '9-foss-2021a'],
-                ['v2106-foss-2021a-highopt', 'v2106-foss-2021a', '9-foss-2021a', '8-intel-2020b', '8-foss-2020b-20210316', '8-foss-2020b'],
+                ('v2106-foss-2021a-highopt', '8-foss-2020b-20210316', '8-intel-2020b', '8-foss-2020b', 'v2106-foss-2021a', '9-foss-2021a'),
+                ('v2106-foss-2021a-highopt', 'v2106-foss-2021a', '9-foss-2021a', '8-intel-2020b', '8-foss-2020b-20210316', '8-foss-2020b'),
             ],
         ]
         for unsorted_v, sorted_v in data:
-            self.assertEqual(sort_recent_versions(unsorted_v), sorted_v)
+            self.assertEqual(tuple(sort_recent_versions(unsorted_v)), sorted_v)
 
     def test_read_write_json(self):
         """Test reading and writing the json data"""

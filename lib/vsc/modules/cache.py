@@ -58,7 +58,7 @@ class SoftwareVersion(LooseVersion):
     """Support even weirder non-sensical version schemes"""
     component_re = re.compile(r'(v?\d+ | [a-z]+ | \.)', re.VERBOSE)
 
-    def parse (self, vstring):
+    def parse(self, vstring):
         self.vstring = vstring
         components = [x for x in self.component_re.split(vstring)
                               if x and x != '.']
