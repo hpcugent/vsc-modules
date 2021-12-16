@@ -28,6 +28,7 @@ Interaction with Lmod lua cache and JSON conversion
 
 import os
 import json
+import re
 from atomicwrites import atomic_write
 from vsc.utils.run import run, RunNoShellAsyncLoop
 from distutils.version import LooseVersion
@@ -47,6 +48,30 @@ DEFAULTKEY = '.default'
 
 MAIN_CLUSTERS_KEY = 'clusters'
 MAIN_SOFTWARE_KEY = 'software'
+
+# very dumb way to deal with difficulty to get utf8 safe data out of
+# lua using print. issue might also be with run.async
+SIMPLE_UTF_FIX_REGEX = re.compile(r"\\x")
+
+
+class SoftwareVersion(LooseVersion):
+    """Support even weirder non-sensical version schemes"""
+    component_re = re.compile(r'(v?\d+ | [a-z]+ | \.)', re.VERBOSE)
+
+    def parse(self, vstring):
+        self.vstring = vstring
+        components = [x for x in self.component_re.split(vstring)
+                              if x and x != '.']
+        for i, obj in enumerate(components):
+            try:
+                components[i] = int(obj)
+            except ValueError:
+                try:
+                    components[i] = int(obj.lstrip('v'))
+                except ValueError:
+                    pass
+
+        self.version = components
 
 
 def run_cache_create():
@@ -74,7 +99,8 @@ def get_lua_via_json(filename, tablenames):
     if ec:
         LOGGER.raiseException("Lua export to json using \"%s\" failed: %s" % (luacmd, out))
 
-    data = json.loads(out)
+    safe_out = SIMPLE_UTF_FIX_REGEX.sub("_____", out)
+    data = json.loads(safe_out)
 
     return [data[x] for x in tablenames]
 
@@ -98,8 +124,23 @@ def cluster_map(mpathMapT):
     modulepathmap = {}
     for mpath, data in mpathMapT.items():
         for clmod in [x for x in data.keys() if x.startswith('cluster/')]:
-            # also handle hidden cluster modules (starting with . to indicate thye are hidden)
-            cluster = clmod.split('/')[1].lstrip('.')
+            # also handle hidden cluster modules, incl hidden partitions
+            #   (starting with . to indicate they are hidden)
+            parts = clmod.split('/')[1:]
+            clustername = parts[0].lstrip('.')
+            if len(parts) == 2:
+                partition = parts[1].lstrip('.')
+                cluster = "%s/%s" % (clustername, partition)
+                if clustername in clustermap:
+                    LOGGER.raiseException("Found existing cluster module %s for same cluster/partition %s" %
+                                          (clustername, partition))
+            else:
+                cluster = clustername
+                partitions = [x for x in clustermap.keys() if x.startswith(clustername + "/")]
+                if partitions:
+                    LOGGER.raiseException("Found existing partitions %s for same cluster %s" %
+                                          (partitions, clustername))
+
             tmpclmod = clustermap.setdefault(cluster, clmod)
             if tmpclmod != clmod:
                 LOGGER.raiseException("Found 2 different cluster modules %s and %s for same cluster %s" %
@@ -150,7 +191,11 @@ def sort_modulepaths(spiderT, mpmap):
 
 def sort_recent_versions(versions):
     """Sort versions using LooseVersion, most recent first"""
-    return sorted(versions, key=LooseVersion, reverse=True)
+    try:
+        return sorted(versions, key=SoftwareVersion, reverse=True)
+    except TypeError:
+        LOGGER.error("Failed to compare versions %s", versions)
+        raise
 
 
 def software_map(spiderT, mpmap):
