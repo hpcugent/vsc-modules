@@ -65,6 +65,12 @@ class CacheTest(TestCase):
                 ('v2106-foss-2021a-highopt', '8-foss-2020b-20210316', '8-intel-2020b', '8-foss-2020b', 'v2106-foss-2021a', '9-foss-2021a'),
                 ('v2106-foss-2021a-highopt', 'v2106-foss-2021a', '9-foss-2021a', '8-intel-2020b', '8-foss-2020b-20210316', '8-foss-2020b'),
             ],
+            [
+                # when split, it compares 2 (of 2.25) with 'binutils' at same position in self.version list
+                ('1.2.8-GCC-4.9.3-2.25', '1.2.8-GCC-4.9.3-binutils-2.25'),
+                ('1.2.8-GCC-4.9.3-binutils-2.25', '1.2.8-GCC-4.9.3-2.25'),
+            ],
+
         ]
         for unsorted_v, sorted_v in data:
             self.assertEqual(tuple(sort_recent_versions(unsorted_v)), sorted_v)
