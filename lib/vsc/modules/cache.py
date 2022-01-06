@@ -1,5 +1,5 @@
 #
-# Copyright 2019-2021 Ghent University
+# Copyright 2019-2022 Ghent University
 #
 # This file is part of vsc-modules,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -60,18 +60,25 @@ class SoftwareVersion(LooseVersion):
 
     def parse(self, vstring):
         self.vstring = vstring
-        components = [x for x in self.component_re.split(vstring)
-                              if x and x != '.']
+        components = [x for x in self.component_re.split(vstring) if x and x != '.']
         for i, obj in enumerate(components):
             try:
-                components[i] = int(obj)
+                # zfill and compare strings, to deal with mixed int/string versions
+                #   64 should be enough for everyone etc
+                #   negative versions are not properly supported anyway
+                components[i] = "%064d" % int(obj.lstrip('v'))
             except ValueError:
-                try:
-                    components[i] = int(obj.lstrip('v'))
-                except ValueError:
-                    pass
+                pass
 
         self.version = components
+
+    def _cmp(self, other):
+        try:
+            return super(SoftwareVersion, self)._cmp(other)
+        except Exception as e:
+            LOGGER.error("Failed to compare %s (%s) with other %s (%s): %s",
+                         self, self.version, other, other.version, e)
+            raise
 
 
 def run_cache_create():
