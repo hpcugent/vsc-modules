@@ -72,7 +72,7 @@ class SoftwareVersion(LooseVersion):
 
         self.version = components
 
-    def _cmp (self, other):
+    def _cmp(self, other):
         try:
             return super(SoftwareVersion, self)._cmp(other)
         except Exception as e:
