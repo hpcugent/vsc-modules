@@ -29,13 +29,12 @@ Interaction with Lmod lua cache and JSON conversion
 import os
 import json
 import re
+import logging
+
 from atomicwrites import atomic_write
 from vsc.utils.run import run, RunNoShellAsyncLoop
 from distutils.version import LooseVersion
-from vsc.utils.fancylogger import getLogger
 from vsc.config.base import CLUSTER_DATA, MODULEROOT
-
-LOGGER = getLogger()
 
 LMOD_CONFIG = '/etc/lmodrc.lua'
 
@@ -76,16 +75,23 @@ class SoftwareVersion(LooseVersion):
         try:
             return super(SoftwareVersion, self)._cmp(other)
         except Exception as e:
-            LOGGER.error("Failed to compare %s (%s) with other %s (%s): %s",
+            logging.exception("Failed to compare %s (%s) with other %s (%s): %s",
                          self, self.version, other, other.version, e)
             raise
+
+
+def log_and_raise(msg):
+    """log to error log and raise exception."""
+    logging.error(msg)
+    raise Exception(msg)
 
 
 def run_cache_create():
     """Run the script to create the Lmod cache"""
     lmod_dir = os.environ.get("LMOD_DIR", None)
     if not lmod_dir:
-        LOGGER.raiseException("Cannot find $LMOD_DIR in the environment.", RuntimeError)
+        logging.error("Cannot find $LMOD_DIR in the environment.")
+        raise RuntimeError("Cannot find $LMOD_DIR in the environment.")
 
     return run([os.path.join(lmod_dir, 'update_lmod_system_cache_files'), MODULEROOT])
 
@@ -93,7 +99,7 @@ def run_cache_create():
 def get_lua_via_json(filename, tablenames):
     """Dump tables from lua data in filename to json as string. Return as list"""
     if not os.path.isfile(filename):
-        LOGGER.raiseException("No valid file %s found" % filename)
+        log_and_raise("No valid file %s found", filename)
 
     tabledata = ','.join(["['%s']=%s" % (x, x) for x in tablenames])
     luatemplate = "json=require('json');dofile('%s');print(json.encode({%s}))"
@@ -104,7 +110,7 @@ def get_lua_via_json(filename, tablenames):
     arun.readsize = 1024**2
     ec, out = arun._run()
     if ec:
-        LOGGER.raiseException("Lua export to json using \"%s\" failed: %s" % (luacmd, out))
+        log_and_raise("Lua export to json using \"%s\" failed: %s" % (luacmd, out))
 
     safe_out = SIMPLE_UTF_FIX_REGEX.sub("_____", out)
     data = json.loads(safe_out)
@@ -139,26 +145,26 @@ def cluster_map(mpathMapT):
                 partition = parts[1].lstrip('.')
                 cluster = "%s/%s" % (clustername, partition)
                 if clustername in clustermap:
-                    LOGGER.raiseException("Found existing cluster module %s for same cluster/partition %s" %
-                                          (clustername, partition))
+                    log_and_raise("Found existing cluster module %s for same cluster/partition %s" %
+                                  (clustername, partition))
             else:
                 cluster = clustername
                 partitions = [x for x in clustermap.keys() if x.startswith(clustername + "/")]
                 if partitions:
-                    LOGGER.raiseException("Found existing partitions %s for same cluster %s" %
-                                          (partitions, clustername))
+                    log_and_raise("Found existing partitions %s for same cluster %s" %
+                                  (partitions, clustername))
 
             tmpclmod = clustermap.setdefault(cluster, clmod)
             if tmpclmod != clmod:
-                LOGGER.raiseException("Found 2 different cluster modules %s and %s for same cluster %s" %
-                                      (tmpclmod, clmod, cluster))
+                log_and_raise("Found 2 different cluster modules %s and %s for same cluster %s" %
+                              (tmpclmod, clmod, cluster))
             mpclusters = modulepathmap.setdefault(mpath, [])
             if cluster not in mpclusters:
                 mpclusters.append(cluster)
             modulepathmap[mpath] = sorted(mpclusters)
 
-    LOGGER.debug("Generated clustermap %s", clustermap)
-    LOGGER.debug("Generated modulepathmap %s", modulepathmap)
+    logging.debug("Generated clustermap %s", clustermap)
+    logging.debug("Generated modulepathmap %s", modulepathmap)
     return clustermap, modulepathmap
 
 
@@ -167,16 +173,16 @@ def sort_modulepaths(spiderT, mpmap):
     modulepaths = []
     for mpath in spiderT.keys():
         if not mpath.startswith("/"):
-            LOGGER.debug("Skipping spiderT key %s", mpath)
+            logging.debug("Skipping spiderT key %s", mpath)
             continue
 
         if mpath in mpmap:
             modulepaths.append(mpath)
         else:
-            LOGGER.debug("Skipping modulepath %s not in modulepath map %s", mpath, mpmap)
+            logging.debug("Skipping modulepath %s not in modulepath map %s", mpath, mpmap)
 
     modulepaths.sort()
-    LOGGER.debug("Found pre-sorted modulepaths %s", modulepaths)
+    logging.debug("Found pre-sorted modulepaths %s", modulepaths)
 
     # sort them
     #   very trivial sort based on EXTRA_MODULEPATHS from CLUSTER_DATA
@@ -188,11 +194,11 @@ def sort_modulepaths(spiderT, mpmap):
         for extra in extras:
             # move to the end (if present)
             if extra in modulepaths:
-                LOGGER.debug("Moving EXTRA_MODULEPATH %s to the end", extra)
+                logging.debug("Moving EXTRA_MODULEPATH %s to the end", extra)
                 modulepaths.remove(extra)
                 modulepaths.append(extra)
 
-    LOGGER.debug("Sorted modulepaths %s", modulepaths)
+    logging.debug("Sorted modulepaths %s", modulepaths)
     return modulepaths
 
 
@@ -201,7 +207,7 @@ def sort_recent_versions(versions):
     try:
         return sorted(versions, key=SoftwareVersion, reverse=True)
     except TypeError:
-        LOGGER.error("Failed to compare versions %s", versions)
+        logging.exception("Failed to compare versions %s", versions)
         raise
 
 
@@ -211,7 +217,7 @@ def software_map(spiderT, mpmap):
 
     softmap = {}
     for mpath in modulepaths:
-        LOGGER.debug("Processing modulepath %s", mpath)
+        logging.debug("Processing modulepath %s", mpath)
         clusters = mpmap[mpath]
         for name, namedata in spiderT[mpath].items():
             soft = softmap.setdefault(name, {})
@@ -222,9 +228,9 @@ def software_map(spiderT, mpmap):
                 # sanity check
                 txt = "for modulepath %s name %s fullname %s: %s" % (mpath, name, fullname, fulldata)
                 if version != fulldata['canonical']:
-                    LOGGER.raiseException("Version != canonical " + txt)
+                    log_and_raise("Version != canonical " + txt)
                 if fullname != "%s/%s" % (name, version):
-                    LOGGER.raiseException("fullname != name/version " + txt)
+                    log_and_raise("fullname != name/version " + txt)
 
                 mpversions.append(version)
                 softversion = soft.setdefault(version, [])
@@ -245,11 +251,11 @@ def software_map(spiderT, mpmap):
                         default = value
 
                     if default not in soft:
-                        LOGGER.raiseException("Default value %s found for %s modulepath %s but not matching entry: %s" %
+                        log_and_raise("Default value %s found for %s modulepath %s but not matching entry: %s" %
                                               (default, name, mpath, defaultdata))
                 else:
                     # see https://easybuild.readthedocs.io/en/latest/Wrapping_dependencies.html
-                    LOGGER.debug("Default without value found for %s modulepath %s: %s", name, mpath, defaultdata)
+                    logging.debug("Default without value found for %s modulepath %s: %s", name, mpath, defaultdata)
 
             if not default:
                 default = sort_recent_versions(mpversions)[0]
@@ -261,7 +267,7 @@ def software_map(spiderT, mpmap):
                 tmpdefault = softdefault.setdefault(cluster, default)
                 if tmpdefault != default:
                     # typically due to modulepath ordering
-                    LOGGER.debug("Already found default for %s for cluster %s: found %s, new %s",
+                    logging.debug("Already found default for %s for cluster %s: found %s, new %s",
                                  name, cluster, tmpdefault, default)
     return softmap
 
@@ -282,7 +288,7 @@ def write_json(clustermap, softmap, filename=None):
             MAIN_CLUSTERS_KEY: clustermap,
             MAIN_SOFTWARE_KEY: softmap,
         }, outfile)
-        LOGGER.debug("Wrote %s", filename)
+        logging.debug("Wrote %s", filename)
 
     os.chmod(filename, 0o644)
 
@@ -293,7 +299,7 @@ def read_json(filename=None):
         filename = get_json_filename()
     with open(filename) as outfile:
         data = json.load(outfile)
-        LOGGER.debug("Read %s", filename)
+        logging.debug("Read %s", filename)
 
     return data[MAIN_CLUSTERS_KEY], data[MAIN_SOFTWARE_KEY]
 
@@ -326,9 +332,9 @@ def software_cluster_view(softmap=None):
             try:
                 versions.remove(default)
             except ValueError as err:
-                LOGGER.raiseException("Unable to remove default %s from versions for %s cluster %s: %s" %
-                                      (default, versions, name, cluster, err))
-
+                logging.exception("Unable to remove default %s from versions %s for %s cluster %s: %s",
+                                      default, versions, name, cluster, err)
+                raise err
             versions.insert(0, default)  # default first
 
     return clview
