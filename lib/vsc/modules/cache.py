@@ -136,10 +136,18 @@ def cluster_map(mpathMapT):
     # map modulepath to list of clusters
     modulepathmap = {}
     for mpath, data in mpathMapT.items():
-        for clmod in [x for x in data.keys() if x.startswith('cluster/')]:
+        for clmod in [x for x in data.keys() if x.startswith('cluster/') or x.startswith('env/software/')]:
+            all_parts = clmod.split('/')
+            # in older versions of cluster-modules, the paths are set via cluster module itelf
+            #   as of v2, they are set via env/software module
+            if all_parts[0] == 'cluster':
+                start = 1
+            else:
+                start = 2
+            parts = all_parts[start:]
+
             # also handle hidden cluster modules, incl hidden partitions
             #   (starting with . to indicate they are hidden)
-            parts = clmod.split('/')[1:]
             clustername = parts[0].lstrip('.')
             if len(parts) == 2:
                 partition = parts[1].lstrip('.')
@@ -154,10 +162,12 @@ def cluster_map(mpathMapT):
                     log_and_raise("Found existing partitions %s for same cluster %s" %
                                   (partitions, clustername))
 
-            tmpclmod = clustermap.setdefault(cluster, clmod)
-            if tmpclmod != clmod:
-                log_and_raise("Found 2 different cluster modules %s and %s for same cluster %s" %
-                              (tmpclmod, clmod, cluster))
+            # recreate the cluster module to support env/software
+            clmod_cl = '/'.join(['cluster'] + parts)
+            tmpclmod = clustermap.setdefault(cluster, clmod_cl)
+            if tmpclmod != clmod_cl:
+                log_and_raise("Found 2 different cluster modules %s and %s for same cluster %s (clmod %s)" %
+                              (tmpclmod, clmod_cl, cluster, clmod))
             mpclusters = modulepathmap.setdefault(mpath, [])
             if cluster not in mpclusters:
                 mpclusters.append(cluster)
