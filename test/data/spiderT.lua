@@ -751,10 +751,10 @@ More information on https://www.ugent.be/hpc/en/infrastructure
 }
 mpathMapT = {
   ["/apps/gent/CO7/cascadelake-volta-ib-PILOT/modules/all"]  = {
-    ["cluster/.joltik"] = "/etc/modulefiles/vsc",
+    ["env/software/.joltik"] = "/etc/modulefiles/vsc",
   },
   ["/apps/gent/CO7/cascadelake-volta-ib/modules/all"]  = {
-    ["cluster/.joltik"] = "/etc/modulefiles/vsc",
+    ["env/software/.joltik"] = "/etc/modulefiles/vsc",
   },
   ["/apps/gent/CO7/haswell-ib/modules/all"]  = {
     ["cluster/golett"] = "/etc/modulefiles/vsc",
@@ -763,7 +763,7 @@ mpathMapT = {
   },
   ["/apps/gent/CO7/sandybridge/modules/all"]  = {
     ["cluster/.ditto"] = "/etc/modulefiles/vsc",
-    ["cluster/delcatty"] = "/etc/modulefiles/vsc",
+    ["env/software/delcatty"] = "/etc/modulefiles/vsc",
   },
   ["/apps/gent/CO7/skylake-eth/modules/all"]  = {
     ["cluster/victini"] = "/etc/modulefiles/vsc",

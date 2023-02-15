@@ -137,7 +137,7 @@ class CacheTest(TestCase):
         version = '2.69-GCCcore-8.2.0'
 
         # only test one value
-        self.assertEqual(mpathMapT[mpath], {'cluster/.joltik': '/etc/modulefiles/vsc'})
+        self.assertEqual(mpathMapT[mpath], {'env/software/.joltik': '/etc/modulefiles/vsc'})
         # only test one value
         self.assertEqual(spiderT[mpath][name]['fileT'][module]['Version'], version)
 
