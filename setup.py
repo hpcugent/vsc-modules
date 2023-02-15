@@ -15,7 +15,7 @@ else:
     mock = 'mock < 4.0'
 
 PACKAGE = {
-    'version': '0.1.4',
+    'version': '0.1.5',
     'author': [sdw],
     'maintainer': [sdw],
     'setup_requires': [
