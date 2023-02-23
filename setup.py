@@ -3,19 +3,11 @@
 """
 Setup file for some modules related tooling
 """
-import sys
-
 import vsc.install.shared_setup as shared_setup
 from vsc.install.shared_setup import sdw
 
-if sys.version_info > (3, 0):
-    mock = 'mock'
-else:
-    # mock 4.x is no longer compatible with Python 2
-    mock = 'mock < 4.0'
-
 PACKAGE = {
-    'version': '0.1.5',
+    'version': '0.1.6',
     'author': [sdw],
     'maintainer': [sdw],
     'setup_requires': [
@@ -28,7 +20,7 @@ PACKAGE = {
         'atomicwrites',
     ],
     'tests_require': [
-        mock,
+        'mock',
     ],
 }
 
