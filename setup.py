@@ -3,8 +3,6 @@
 """
 Setup file for some modules related tooling
 """
-import sys
-
 import vsc.install.shared_setup as shared_setup
 from vsc.install.shared_setup import sdw
 
