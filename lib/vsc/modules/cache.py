@@ -65,7 +65,7 @@ class SoftwareVersion(LooseVersion):
                 # zfill and compare strings, to deal with mixed int/string versions
                 #   64 should be enough for everyone etc
                 #   negative versions are not properly supported anyway
-                components[i] = "%064d" % int(obj.lstrip('v'))
+                components[i] = f"{int(obj.lstrip('v')):064}"
             except ValueError:
                 pass
 
