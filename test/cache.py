@@ -1,5 +1,5 @@
 #
-# Copyright 2019-2023 Ghent University
+# Copyright 2019-2024 Ghent University
 #
 # This file is part of vsc-modules,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -47,7 +47,7 @@ class CacheTest(TestCase):
     def setUp(self):
         """Prepare to run test"""
 
-        super(CacheTest, self).setUp()
+        super().setUp()
 
         self.topdir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         # monkeypatch
@@ -168,7 +168,7 @@ class CacheTest(TestCase):
 
         clview = software_cluster_view(softmap=softmap)
         # regular ordered
-        self.assertEqual(clview['joltik']['Autoconf'], ['2.69-GCCcore-8.3.0', u'2.69-GCCcore-8.2.0'])
+        self.assertEqual(clview['joltik']['Autoconf'], ['2.69-GCCcore-8.3.0', '2.69-GCCcore-8.2.0'])
         # non-trivial (first) default, rest ordered
         #   this default was manually set in the spiderT.lua test data
         self.assertEqual(clview['skitty']['Bazel'],

@@ -1,5 +1,5 @@
 #
-# Copyright 2019-2023 Ghent University
+# Copyright 2019-2024 Ghent University
 #
 # This file is part of vsc-modules,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -73,7 +73,7 @@ class SoftwareVersion(LooseVersion):
 
     def _cmp(self, other):
         try:
-            return super(SoftwareVersion, self)._cmp(other)
+            return super()._cmp(other)
         except Exception as e:
             logging.exception("Failed to compare %s (%s) with other %s (%s): %s",
                          self, self.version, other, other.version, e)
@@ -101,7 +101,7 @@ def get_lua_via_json(filename, tablenames):
     if not os.path.isfile(filename):
         log_and_raise("No valid file %s found", filename)
 
-    tabledata = ','.join(["['%s']=%s" % (x, x) for x in tablenames])
+    tabledata = ','.join([f"['{x}']={x}" for x in tablenames])
     luatemplate = "json=require('json');dofile('%s');print(json.encode({%s}))"
     luacmd = luatemplate % (filename, tabledata)
     # default asyncloop.run is slow: if the output is very big, code reads in 1k chunks
@@ -110,7 +110,7 @@ def get_lua_via_json(filename, tablenames):
     arun.readsize = 1024**2
     ec, out = arun._run()
     if ec:
-        log_and_raise("Lua export to json using \"%s\" failed: %s" % (luacmd, out))
+        log_and_raise(f"Lua export to json using \"{luacmd}\" failed: {out}")
 
     safe_out = SIMPLE_UTF_FIX_REGEX.sub("_____", out)
     data = json.loads(safe_out)
@@ -151,23 +151,22 @@ def cluster_map(mpathMapT):
             clustername = parts[0].lstrip('.')
             if len(parts) == 2:
                 partition = parts[1].lstrip('.')
-                cluster = "%s/%s" % (clustername, partition)
+                cluster = f"{clustername}/{partition}"
                 if clustername in clustermap:
-                    log_and_raise("Found existing cluster module %s for same cluster/partition %s" %
-                                  (clustername, partition))
+                    log_and_raise(f"Found existing cluster module {clustername} for cluster/partition {partition}")
             else:
                 cluster = clustername
                 partitions = [x for x in clustermap.keys() if x.startswith(clustername + "/")]
                 if partitions:
-                    log_and_raise("Found existing partitions %s for same cluster %s" %
-                                  (partitions, clustername))
+                    log_and_raise(f"Found existing partitions {partitions} for same cluster {clustername}")
 
             # recreate the cluster module to support env/software
             clmod_cl = '/'.join(['cluster'] + parts)
             tmpclmod = clustermap.setdefault(cluster, clmod_cl)
             if tmpclmod != clmod_cl:
-                log_and_raise("Found 2 different cluster modules %s and %s for same cluster %s (clmod %s)" %
-                              (tmpclmod, clmod_cl, cluster, clmod))
+                log_and_raise(
+                    f"Found 2 different cluster modules {tmpclmod} and {clmod_cl}"
+                    f" for same cluster {cluster} (clmod {clmod})")
             mpclusters = modulepathmap.setdefault(mpath, [])
             if cluster not in mpclusters:
                 mpclusters.append(cluster)
@@ -236,10 +235,10 @@ def software_map(spiderT, mpmap):
             for fullname, fulldata in namedata['fileT'].items():
                 version = fulldata['Version']
                 # sanity check
-                txt = "for modulepath %s name %s fullname %s: %s" % (mpath, name, fullname, fulldata)
+                txt = f"for modulepath {mpath} name {name} fullname {fullname}: {fulldata}"
                 if version != fulldata['canonical']:
                     log_and_raise("Version != canonical " + txt)
-                if fullname != "%s/%s" % (name, version):
+                if fullname != f"{name}/{version}":
                     log_and_raise("fullname != name/version " + txt)
 
                 mpversions.append(version)
@@ -261,8 +260,8 @@ def software_map(spiderT, mpmap):
                         default = value
 
                     if default not in soft:
-                        log_and_raise("Default value %s found for %s modulepath %s but not matching entry: %s" %
-                                              (default, name, mpath, defaultdata))
+                        log_and_raise(f"Default value {default} found for {name} modulepath {mpmap} "
+                                      f"but not matching entry: {defaultdata}")
                 else:
                     # see https://easybuild.readthedocs.io/en/latest/Wrapping_dependencies.html
                     logging.debug("Default without value found for %s modulepath %s: %s", name, mpath, defaultdata)
@@ -307,7 +306,7 @@ def read_json(filename=None):
     """Read JSON and return cluster and software map"""
     if filename is None:
         filename = get_json_filename()
-    with open(filename) as outfile:
+    with open(filename, encoding='utf8') as outfile:
         data = json.load(outfile)
         logging.debug("Read %s", filename)
 
