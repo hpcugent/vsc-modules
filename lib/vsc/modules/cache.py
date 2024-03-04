@@ -1,5 +1,5 @@
 #
-# Copyright 2019-2022 Ghent University
+# Copyright 2019-2024 Ghent University
 #
 # This file is part of vsc-modules,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -65,7 +65,7 @@ class SoftwareVersion(LooseVersion):
                 # zfill and compare strings, to deal with mixed int/string versions
                 #   64 should be enough for everyone etc
                 #   negative versions are not properly supported anyway
-                components[i] = "%064d" % int(obj.lstrip('v'))
+                components[i] = f"{int(obj.lstrip('v')):064}"
             except ValueError:
                 pass
 
@@ -73,7 +73,7 @@ class SoftwareVersion(LooseVersion):
 
     def _cmp(self, other):
         try:
-            return super(SoftwareVersion, self)._cmp(other)
+            return super()._cmp(other)
         except Exception as e:
             logging.exception("Failed to compare %s (%s) with other %s (%s): %s",
                          self, self.version, other, other.version, e)
@@ -99,9 +99,9 @@ def run_cache_create():
 def get_lua_via_json(filename, tablenames):
     """Dump tables from lua data in filename to json as string. Return as list"""
     if not os.path.isfile(filename):
-        log_and_raise("No valid file %s found", filename)
+        log_and_raise(f"No valid file {filename} found")
 
-    tabledata = ','.join(["['%s']=%s" % (x, x) for x in tablenames])
+    tabledata = ','.join([f"['{x}']={x}" for x in tablenames])
     luatemplate = "json=require('json');dofile('%s');print(json.encode({%s}))"
     luacmd = luatemplate % (filename, tabledata)
     # default asyncloop.run is slow: if the output is very big, code reads in 1k chunks
@@ -110,7 +110,7 @@ def get_lua_via_json(filename, tablenames):
     arun.readsize = 1024**2
     ec, out = arun._run()
     if ec:
-        log_and_raise("Lua export to json using \"%s\" failed: %s" % (luacmd, out))
+        log_and_raise(f"Lua export to json using \"{luacmd}\" failed: {out}")
 
     safe_out = SIMPLE_UTF_FIX_REGEX.sub("_____", out)
     data = json.loads(safe_out)
@@ -143,21 +143,18 @@ def cluster_map(mpathMapT):
             clustername = parts[0].lstrip('.')
             if len(parts) == 2:
                 partition = parts[1].lstrip('.')
-                cluster = "%s/%s" % (clustername, partition)
+                cluster = f"{clustername}/{partition}"
                 if clustername in clustermap:
-                    log_and_raise("Found existing cluster module %s for same cluster/partition %s" %
-                                  (clustername, partition))
+                    log_and_raise(f"Found existing cluster module {clustername} for same cluster/partition {partition}")
             else:
                 cluster = clustername
                 partitions = [x for x in clustermap.keys() if x.startswith(clustername + "/")]
                 if partitions:
-                    log_and_raise("Found existing partitions %s for same cluster %s" %
-                                  (partitions, clustername))
+                    log_and_raise(f"Found existing partitions {partitions} for same cluster {clustername}")
 
             tmpclmod = clustermap.setdefault(cluster, clmod)
             if tmpclmod != clmod:
-                log_and_raise("Found 2 different cluster modules %s and %s for same cluster %s" %
-                              (tmpclmod, clmod, cluster))
+                log_and_raise(f"Found 2 different cluster modules {tmpclmod} and {clmod} for same cluster {cluster}")
             mpclusters = modulepathmap.setdefault(mpath, [])
             if cluster not in mpclusters:
                 mpclusters.append(cluster)
@@ -226,10 +223,10 @@ def software_map(spiderT, mpmap):
             for fullname, fulldata in namedata['fileT'].items():
                 version = fulldata['Version']
                 # sanity check
-                txt = "for modulepath %s name %s fullname %s: %s" % (mpath, name, fullname, fulldata)
+                txt = f"for modulepath {mpath} name {name} fullname {fullname}: {fulldata}"
                 if version != fulldata['canonical']:
                     log_and_raise("Version != canonical " + txt)
-                if fullname != "%s/%s" % (name, version):
+                if fullname != f"{name}/{version}":
                     log_and_raise("fullname != name/version " + txt)
 
                 mpversions.append(version)
@@ -251,8 +248,8 @@ def software_map(spiderT, mpmap):
                         default = value
 
                     if default not in soft:
-                        log_and_raise("Default value %s found for %s modulepath %s but not matching entry: %s" %
-                                              (default, name, mpath, defaultdata))
+                        log_and_raise(f"Default value {default} found for {name} modulepath"
+                                      f"{mpath} but not matching entry: {defaultdata}")
                 else:
                     # see https://easybuild.readthedocs.io/en/latest/Wrapping_dependencies.html
                     logging.debug("Default without value found for %s modulepath %s: %s", name, mpath, defaultdata)
@@ -340,6 +337,23 @@ def software_cluster_view(softmap=None):
     return clview
 
 
+def make_stats(clustermap, softmap):
+    names = 0
+    stats = {f"modules_{cl}": 0 for cl in clustermap.keys()}
+    for moddata in softmap.values():
+        names += 1
+        for version, clusters in moddata.items():
+            if version == DEFAULTKEY:
+                continue
+            for cl in clusters:
+                stats[f"modules_{cl}"] += 1
+    stats['total_modules'] = sum(stats.values())
+    stats['total_names'] = names
+    stats['clusters'] = len(clustermap)
+
+    return stats
+
+
 def convert_lmod_cache_to_json():
     """Main conversion of Lmod lua cache to cluster and software mapping in JSON"""
     cachefile = os.path.join(get_lmod_conf()['dir'], CACHEFILENAME)
@@ -349,3 +363,5 @@ def convert_lmod_cache_to_json():
     clustermap, mpmap = cluster_map(mpathMapT)
     softmap = software_map(spiderT, mpmap)
     write_json(clustermap, softmap)
+
+    return make_stats(clustermap, softmap)

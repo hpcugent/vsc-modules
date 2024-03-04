@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2016-2022 Ghent University
+# Copyright 2016-2024 Ghent University
 #
 # This file is part of vsc-modules,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -29,6 +29,7 @@ It also can check if the age of the current age and will report if it's too old.
 
 @author: Ward Poelmans (Ghent University)
 """
+import logging
 import os
 import time
 from vsc.utils.script_tools import ExtendedSimpleOption
@@ -60,7 +61,9 @@ def main():
                 opts.critical("Lmod cache update failed")
 
             try:
-                convert_lmod_cache_to_json()
+                stats = convert_lmod_cache_to_json()
+                logging.debug("Got %s clusters and %s total modules", stats['clusters'], stats['total_modules'])
+                opts.thresholds = stats
             except Exception as err:
                 opts.log.exception("Lmod to JSON failed: %s", err)
                 opts.critical("Lmod to JSON failed.")
