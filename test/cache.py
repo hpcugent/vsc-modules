@@ -37,6 +37,7 @@ from vsc.modules.cache import (
     get_lmod_conf, get_lmod_cache,
     get_json_filename, write_json, read_json,
     software_cluster_view, sort_recent_versions,
+    make_stats,
     )
 
 import logging
@@ -174,3 +175,21 @@ class CacheTest(TestCase):
         self.assertEqual(clview['skitty']['Bazel'],
                          ['0.20.0-GCCcore-8.2.0', '0.26.1-GCCcore-8.2.0',
                           '0.25.2-GCCcore-8.2.0', '0.24.1-GCCcore-8.2.0'])
+
+        stats = make_stats(clustermap, softmap)
+        self.assertEqual(stats, {
+            'clusters': 11,
+            'modules_banette': 0,
+            'modules_delcatty': 0,
+            'modules_ditto': 0,
+            'modules_golett': 0,
+            'modules_joltik': 6,
+            'modules_metapod': 0,
+            'modules_phanpy': 0,
+            'modules_shuppet': 0,
+            'modules_skitty': 8,
+            'modules_swalot': 0,
+            'modules_victini': 8,
+            'total_modules': 22,
+            'total_names': 6,
+        })
