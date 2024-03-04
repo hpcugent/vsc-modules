@@ -349,6 +349,23 @@ def software_cluster_view(softmap=None):
     return clview
 
 
+def make_stats(clustermap, softmap):
+    names = 0
+    stats = {f"modules_{cl}": 0 for cl in clustermap.keys()}
+    for moddata in softmap.values():
+        names += 1
+        for version, clusters in moddata.items():
+            if version == DEFAULTKEY:
+                continue
+            for cl in clusters:
+                stats[f"modules_{cl}"] += 1
+    stats['total_modules'] = sum(stats.values())
+    stats['total_names'] = names
+    stats['clusters'] = len(clustermap)
+
+    return stats
+
+
 def convert_lmod_cache_to_json():
     """Main conversion of Lmod lua cache to cluster and software mapping in JSON"""
     cachefile = os.path.join(get_lmod_conf()['dir'], CACHEFILENAME)
@@ -358,3 +375,5 @@ def convert_lmod_cache_to_json():
     clustermap, mpmap = cluster_map(mpathMapT)
     softmap = software_map(spiderT, mpmap)
     write_json(clustermap, softmap)
+
+    return make_stats(clustermap, softmap)

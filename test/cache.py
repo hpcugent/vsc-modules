@@ -37,6 +37,7 @@ from vsc.modules.cache import (
     get_lmod_conf, get_lmod_cache,
     get_json_filename, write_json, read_json,
     software_cluster_view, sort_recent_versions,
+    make_stats,
     )
 
 import logging

@@ -29,6 +29,7 @@ It also can check if the age of the current age and will report if it's too old.
 
 @author: Ward Poelmans (Ghent University)
 """
+import logging
 import os
 import time
 from vsc.utils.script_tools import ExtendedSimpleOption
@@ -61,7 +62,7 @@ def main():
 
             try:
                 stats = convert_lmod_cache_to_json()
-                logging.debug("Got %s clusters and %s total modules", stats['clusters'], stats['total_modules'])
+                logging.info("Got %s clusters and %s total modules", stats['clusters'], stats['total_modules'])
                 opts.thresholds = stats
             except Exception as err:
                 opts.log.exception("Lmod to JSON failed: %s", err)
@@ -84,7 +85,7 @@ def main():
         opts.critical("Script failed because of uncaught exception. See logs.")
 
     if opts.options.create_cache:
-        opts.epilogue("Lmod cache updated.")
+        opts.epilogue("Lmod cache updated.", opts.thresholds)
     else:
         opts.epilogue("Lmod cache is still fresh.")
 
