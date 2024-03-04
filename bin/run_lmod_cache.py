@@ -60,7 +60,9 @@ def main():
                 opts.critical("Lmod cache update failed")
 
             try:
-                convert_lmod_cache_to_json()
+                stats = convert_lmod_cache_to_json()
+                logging.debug("Got %s clusters and %s total modules", stats['clusters'], stats['total_modules'])
+                opts.thresholds = stats
             except Exception as err:
                 opts.log.exception("Lmod to JSON failed: %s", err)
                 opts.critical("Lmod to JSON failed.")
