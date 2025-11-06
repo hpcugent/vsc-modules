@@ -1,5 +1,5 @@
 #
-# Copyright 2015-2024 Ghent University
+# Copyright 2015-2025 Ghent University
 #
 # This file is part of vsc-modules,
 # originally created by the HPC team of Ghent University (http://ugent.be/hpc/en),
@@ -25,5 +25,7 @@
 """
 Allow other packages to extend this namespace, zip safe setuptools style
 """
+
 import pkg_resources
+
 pkg_resources.declare_namespace(__name__)
